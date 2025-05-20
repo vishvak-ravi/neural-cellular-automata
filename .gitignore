@@ -1,2 +1,3 @@
 board*
 **pycache**
+*.DS_Store*

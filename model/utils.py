@@ -91,6 +91,7 @@ class CARule(torch.nn.Module):
         """
         x : B x n x H x W
         """
+        x = get_perception(x)
         if self.dense:
             B, C, H, W = x.shape
             x = x.permute(0, 2, 3, 1).reshape(B * H * W, C)
@@ -126,13 +127,8 @@ def destroy(
 
 
 def to_onnx(torch_model: CARule):
-    example_input = torch.ones(
-        1,
-        48,
-        GEN_SIZE[0],
-        GEN_SIZE[1]
-    )
+    example_input = torch.ones(1, 16, GEN_SIZE[0], GEN_SIZE[1])
     # quantize + prune and retrain later
     onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
     onxx_program.optimize()
-    onxx_program.save('data/params/mudkip.onxx')
+    onxx_program.save("data/params/mudkip.onxx")
