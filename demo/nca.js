@@ -47,11 +47,6 @@ export class NCA {
     const delta = deltaT.data; // Float32Array of deltas
     const state = this.tensor.data; // current state buffer
 
-    // apply 50 % Bernoulli mask and accumulate
-    for (let i = 0; i < state.length; ++i) {
-      if (Math.random() < 0.5) state[i] += delta[i];
-    }
-
     this._updateTexture(state); // refresh RGB preview
     this.tensor = new ort.Tensor("float32", state, [1, 16, SIZE, SIZE]);
   }

@@ -36,7 +36,7 @@ def train(
 
     # optimizer + loss
     opt = AdamW(
-        update_rule.parameters(),
+        get_board.parameters(),
         lr=LR,
     )
     loss_fn = torch.nn.MSELoss(reduction="none").to(device)
@@ -60,11 +60,9 @@ def train(
         loss_val = loss_vals.mean()
 
         # grad norm helps
-        grads = torch.autograd.grad(
-            loss_val, update_rule.parameters(), retain_graph=True
-        )
+        grads = torch.autograd.grad(loss_val, get_board.parameters(), retain_graph=True)
         normalized_grads = [g / (g.norm() + 1e-8) for g in grads]
-        for p, g in zip(update_rule.parameters(), normalized_grads):
+        for p, g in zip(get_board.parameters(), normalized_grads):
             if p.grad is None:
                 p.grad = g.clone()
             else:
@@ -92,9 +90,9 @@ def train(
                 board_imgs, f"data/boards/{steps}.png", nrow=int(bs**0.5)
             )
     # Save model weights at the end of training
-    torch.save(update_rule.state_dict(), "data/params/mudkip.pt")
+    torch.save(get_board.state_dict(), "data/params/mudkip.pt")
 
 
 if __name__ == "__main__":
-    update_rule = CAGetBoard().to(device)
-    train("data/mudkip.png", update_rule=update_rule, task=NCATask.GROW)
+    get_board = CAGetBoard().to(device)
+    train("data/mudkip.png", get_board, task=NCATask.GROW)

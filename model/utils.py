@@ -30,7 +30,7 @@ def init_board(img_path: str, init_val: float = None) -> torch.Tensor:
     else:
         features = torch.rand(16, H, W)
 
-    features[3:, H // 2, W // 2] = 1.0  # set the seed
+    features[3, H // 2, W // 2] = 1.0  # set the seed
 
     return features, target
 
@@ -87,16 +87,19 @@ class CAUpdate(torch.nn.Module):
         x = self.act2(x)
         return x
 
+
 class CAGetBoard(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.model = CAUpdate()
+
     def forward(self, x):
         """
         x : B x n x H x W
-        
+
         n = RGBA + hidden states
         """
+        boards = x
         perception = get_perception(boards)
         dboard = self.model(perception)
 
@@ -121,6 +124,7 @@ class CAGetBoard(torch.nn.Module):
         boards[:, :3].clamp_(0.0, 1.0)
         return boards
 
+
 def destroy(
     board: torch.Tensor, destroy_radius: int = 3, center: torch.Tensor = None
 ) -> torch.Tensor:
@@ -141,7 +145,7 @@ def destroy(
     ]
 
 
-def to_onnx(torch_model: CARule):
+def to_onnx(torch_model: CAGetBoard):
     example_input = torch.ones(1, 16, GEN_SIZE[0], GEN_SIZE[1])
     # quantize + prune and retrain later
     onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
