@@ -1,12 +1,8 @@
 // index.js
-import { update, SIZE } from "./nca.js";
+import { SIZE, NCA } from "./nca.js";
 
 ("use strict");
-let board = new Float32Array(SIZE * SIZE * 3); // RGB per cell
-board[((SIZE >> 1) * SIZE + (SIZE >> 1)) * 3] = 1.0; // center-pixel = white
-board[((SIZE >> 1) * SIZE + (SIZE >> 1)) * 3 + 1] = 1.0; // center-pixel = white
-board[((SIZE >> 1) * SIZE + (SIZE >> 1)) * 3 + 2] = 1.0; // center-pixel = white
-
+let nca = new NCA();
 /*========================  SHADERS  ========================*/
 const vs = `#version 300 es
 in vec2 a_position;
@@ -70,12 +66,12 @@ gl.texImage2D(
   0,
   gl.RGB,
   gl.FLOAT,
-  board
+  nca.get_board() /* TODO make sure ths mem address dont change */
 );
 gl.uniform1i(gl.getUniformLocation(prog, "u_board"), 0);
 
 /*========================  GAME LOOP  ========================*/
-update(board); // initial update
+nca.step(); // initial update
 
 const slider = document.getElementById("speed");
 const fpsLbl = document.getElementById("fpsVal");
@@ -90,7 +86,8 @@ let last = 0;
 function render(now) {
   if (now - last >= 1000 / fps) {
     // throttle by chosen FPS
-    update(board);
+    nca.step();
+    let board = nca.get_board();
     gl.texSubImage2D(
       gl.TEXTURE_2D,
       0,

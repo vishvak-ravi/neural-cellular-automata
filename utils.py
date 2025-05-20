@@ -91,6 +91,7 @@ class CARule(torch.nn.Module):
         """
         x : B x C x H x W
         """
+        x = get_perception(x)
         if self.dense:
             B, C, H, W = x.shape
             x = x.permute(0, 2, 3, 1).reshape(B * H * W, C)
