@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Neural Cellular Automata Demo</title>
+    <link rel="stylesheet" href="index.css" />
+    <!-- add here -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  </head>
+  <body>
+    <h1>Neural Cellular Automata Demo</h1>
+    <div class="window-parent">
+      <div class="canvas-parent">
+        <canvas id="c" width="512" height="512"></canvas>
+        <!-- your module can now see global `ort` -->
+        <script type="module" src="./index.js"></script>
+      </div>
+      <div class="settings-parent">
+        <div class="subject-selection">Choose Your Pokemon</div>
+        <div class="simulation-settings">
+          <label for="speed"
+            >Updates per second: <span id="fpsVal">10</span></label
+          >
+          <input type="range" id="speed" min="1" max="60" value="10" />
+        </div>
+      </div>
+    </div>
+    <script src="https://webgl2fundamentals.org/webgl/resources/webgl-utils.js"></script>
+  </body>
+</html>
