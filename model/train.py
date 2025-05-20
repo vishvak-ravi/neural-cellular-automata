@@ -4,12 +4,11 @@ from torch.optim.adamw import AdamW
 
 from enum import Enum
 
-from utils import CARule, init_board, get_perception
+from utils import CAGetBoard, init_board, get_perception
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 STEPS = 8000
-EPS = 0.5
 LR = 2e-3
 
 
@@ -21,7 +20,7 @@ class NCATask(Enum):
 
 def train(
     img_path: str,
-    update_rule: CARule,
+    get_board: CAGetBoard,
     bs: int = 16,
     pool_size: int = 1024,
     task: NCATask = NCATask.REGENERATE,
@@ -50,28 +49,7 @@ def train(
             pool_sample = torch.randperm(pool_size)[:bs]
             boards = pool[pool_sample]
 
-            perception = get_perception(boards)
-            dboard = update_rule(perception)
-
-            B, C, H, W = dboard.shape
-            pre_alive = (
-                (F.max_pool2d(boards[:, 3:4, :, :], 3, stride=1, padding=1) > 0.1)
-                .int()[:, 0]
-                .unsqueeze(1)
-            ).to(device)
-            dboard = dboard * (
-                torch.rand(B, 1, H, W, device=device) < EPS
-            )  # only some cells update
-            boards = boards + dboard
-            post_alive = (
-                (F.max_pool2d(boards[:, 3:4, :, :], 3, stride=1, padding=1) > 0.1)
-                .int()[:, 0]
-                .unsqueeze(1)
-            ).to(device)
-            boards = boards * (
-                pre_alive & post_alive
-            )  # only update cells that were alive both before and after the update
-            boards[:, :3].clamp_(0.0, 1.0)
+            boards = get_board(boards)
 
             # update pool
             pool[pool_sample] = boards
@@ -118,5 +96,5 @@ def train(
 
 
 if __name__ == "__main__":
-    update_rule = CARule(dense=False).to(device)
+    update_rule = CAGetBoard().to(device)
     train("data/mudkip.png", update_rule=update_rule, task=NCATask.GROW)

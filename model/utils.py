@@ -5,6 +5,7 @@ from torch import nn
 from torch.optim.adamw import AdamW
 
 GEN_SIZE = (48, 48)
+EPS = 0.5
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -66,22 +67,11 @@ def get_perception(state_grid: torch.Tensor) -> torch.Tensor:
     return state_grid
 
 
-class CARule(torch.nn.Module):
-    def __init__(self, dense: bool = True):
+class CAUpdate(torch.nn.Module):
+    def __init__(self):
         super().__init__()
-        self.dense = dense
-        if dense:
-            self.layer1 = nn.Linear(
-                48,
-                128,
-            )
-            self.layer2 = nn.Linear(
-                128,
-                16,
-            )
-        else:
-            self.layer1 = nn.Conv2d(48, 128, 1)
-            self.layer2 = nn.Conv2d(128, 16, 1)
+        self.layer1 = nn.Conv2d(48, 128, 1)
+        self.layer2 = nn.Conv2d(128, 16, 1)
         nn.init.constant_(self.layer2.weight, 0)
         nn.init.constant_(self.layer2.bias, 0)
         self.act1 = nn.ReLU()
@@ -91,20 +81,45 @@ class CARule(torch.nn.Module):
         """
         x : B x n x H x W
         """
-        x = get_perception(x)
-        if self.dense:
-            B, C, H, W = x.shape
-            x = x.permute(0, 2, 3, 1).reshape(B * H * W, C)
         x = self.layer1(x)
         x = self.act1(x)
         x = self.layer2(x)
         x = self.act2(x)
-
-        if self.dense:
-            x = x.reshape(B, H, W, -1)
-            x = x.permute(0, 3, 1, 2)
         return x
 
+class CAGetBoard(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.model = CAUpdate()
+    def forward(self, x):
+        """
+        x : B x n x H x W
+        
+        n = RGBA + hidden states
+        """
+        perception = get_perception(boards)
+        dboard = self.model(perception)
+
+        B, C, H, W = dboard.shape
+        pre_alive = (
+            (F.max_pool2d(boards[:, 3:4, :, :], 3, stride=1, padding=1) > 0.1)
+            .int()[:, 0]
+            .unsqueeze(1)
+        ).to(device)
+        dboard = dboard * (
+            torch.rand(B, 1, H, W, device=device) < EPS
+        )  # only some cells update
+        boards = boards + dboard
+        post_alive = (
+            (F.max_pool2d(boards[:, 3:4, :, :], 3, stride=1, padding=1) > 0.1)
+            .int()[:, 0]
+            .unsqueeze(1)
+        ).to(device)
+        boards = boards * (
+            pre_alive & post_alive
+        )  # only update cells that were alive both before and after the update
+        boards[:, :3].clamp_(0.0, 1.0)
+        return boards
 
 def destroy(
     board: torch.Tensor, destroy_radius: int = 3, center: torch.Tensor = None
