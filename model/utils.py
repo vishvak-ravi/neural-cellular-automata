@@ -150,4 +150,4 @@ def to_onnx(torch_model: CAGetBoard):
     # quantize + prune and retrain later
     onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
     onxx_program.optimize()
-    onxx_program.save("data/params/mudkip.onxx")
+    onxx_program.save("data/params/mudkip.onnx")

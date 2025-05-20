@@ -3,6 +3,7 @@ import { SIZE, NCA } from "./nca.js";
 
 ("use strict");
 let nca = new NCA();
+
 /*========================  SHADERS  ========================*/
 const vs = `#version 300 es
 in vec2 a_position;
@@ -70,6 +71,43 @@ gl.texImage2D(
 );
 gl.uniform1i(gl.getUniformLocation(prog, "u_board"), 0);
 
+/*========================  MOUSE STATE  ========================*/
+let mouseDown = false;
+let mouseClient = { x: 0, y: 0 };
+
+canvas.addEventListener("mousedown", (e) => {
+  mouseDown = true;
+  mouseClient.x = e.clientX;
+  mouseClient.y = e.clientY;
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (mouseDown) {
+    mouseClient.x = e.clientX;
+    mouseClient.y = e.clientY;
+  }
+});
+
+window.addEventListener("mouseup", () => (mouseDown = false));
+
+/*========================  DESTRUCTION  ========================*/
+function getDestructionCenterTexCoords() {
+  if (!mouseDown) return null;
+
+  const rect = canvas.getBoundingClientRect();
+  const localX = mouseClient.x - rect.left;
+  const localY = mouseClient.y - rect.top;
+
+  if (localX < 0 || localY < 0 || localX > rect.width || localY > rect.height)
+    return null; // cursor outside canvas
+
+  const texX = Math.floor((localX / rect.width) * SIZE);
+  // WebGL (0,0) is bottom-left; DOM (0,0) is top-left → flip Y
+  const texY = Math.floor(((rect.height - localY) / rect.height) * SIZE);
+
+  return { x: texX, y: texY };
+}
+
 /*========================  GAME LOOP  ========================*/
 nca.step(); // initial update
 
@@ -84,6 +122,13 @@ slider.oninput = () => {
 
 let last = 0;
 function render(now) {
+  // handle destruction
+  let destructionCenterCoords = getDestructionCenterTexCoords();
+  if (destructionCenterCoords != null) {
+    console.log(destructionCenterCoords);
+    // nca.destroyAt(destructionCenterCoords);
+  }
+
   if (now - last >= 1000 / fps) {
     // throttle by chosen FPS
     nca.step();
