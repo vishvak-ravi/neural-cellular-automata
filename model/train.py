@@ -28,8 +28,8 @@ def train(
     # set up the pool and save the resized target image
     if task == NCATask.GROW:
         pool_size = bs
-    board, target = init_board(img_path, 0.0)
-    pool = torch.stack([board.clone() for _ in range(pool_size)], dim=0)
+    seed, target = init_board(img_path, 0.0)
+    pool = torch.stack([seed.clone() for _ in range(pool_size)], dim=0)
     pool = pool.to(device)
     target = target.to(device)
     torchvision.utils.save_image(target, f"a_target.png")
@@ -47,15 +47,24 @@ def train(
         )  # number of CA steps until optimization
         for _ in range(steps_till_opt):
             pool_sample = torch.randperm(pool_size)[:bs]
-            boards = pool[pool_sample]
+            sampled_boards = pool[pool_sample]
 
-            boards = get_board(boards)
+            if (
+                task == NCATask.STABLE
+            ):  # non growing tasks require modifying the pool...
+                with torch.no_grad():
+                    pre_imgs = sampled_boards[:, :4]
+                    pre_loss = (pre_imgs - target).square().mean((1, 2, 3))
+                worst = pre_loss.argmax()
+                sampled_boards[worst] = seed
+
+            sampled_boards = get_board(sampled_boards)
 
             # update pool
-            pool[pool_sample] = boards
+            pool[pool_sample] = sampled_boards
 
         # time to calculate loss!
-        board_imgs = boards[:, :4, :, :]
+        board_imgs = sampled_boards[:, :4, :, :]
         loss_vals = loss_fn(target.unsqueeze(0).expand_as(board_imgs), board_imgs)
         loss_val = loss_vals.mean()
 
@@ -72,17 +81,11 @@ def train(
         opt.zero_grad()
         pool = pool.detach()
 
-        board, _ = init_board("data/mudkip.png", 0.0)
-        boards = boards.to(device)
         loss_vals = loss_vals.mean(dim=(1, 2, 3))
 
-        # adjust the pool
-        if task == NCATask.GROW:
-            pool = board.unsqueeze(0).repeat(bs, 1, 1, 1).to(device).detach()
-        elif task == NCATask.STABLE:  # non growing tasks require modifying the pool...
-            worst_loss_batch_idx = loss_vals.argmax().item()
-            worst_loss_pool_idx = pool_sample[worst_loss_batch_idx]
-            pool[worst_loss_pool_idx] = board.to("cuda").detach()
+        pool[pool_sample] = (
+            seed.unsqueeze(0).repeat(bs, 1, 1, 1).to(device).detach()
+        )
 
         if steps % 100 == 0:
             print(loss_vals)
@@ -95,4 +98,4 @@ def train(
 
 if __name__ == "__main__":
     get_board = CAGetBoard().to(device)
-    train("data/mudkip.png", get_board, task=NCATask.GROW)
+    train("data/mudkip.png", get_board, task=NCATask.STABLE)
