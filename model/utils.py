@@ -89,7 +89,7 @@ class CARule(torch.nn.Module):
 
     def forward(self, x):
         """
-        x : B x C x H x W
+        x : B x n x H x W
         """
         if self.dense:
             B, C, H, W = x.shape
@@ -123,3 +123,16 @@ def destroy(
     return padded_board[
         :, :, destroy_radius : destroy_radius + H, destroy_radius : destroy_radius + W
     ]
+
+
+def to_onnx(torch_model: CARule):
+    example_input = torch.ones(
+        1,
+        48,
+        GEN_SIZE[0],
+        GEN_SIZE[1]
+    )
+    # quantize + prune and retrain later
+    onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
+    onxx_program.optimize()
+    onxx_program.save('data/params/mudkip.onxx')
