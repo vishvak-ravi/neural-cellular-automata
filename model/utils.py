@@ -123,26 +123,39 @@ class CAGetBoard(torch.nn.Module):
         )  # only update cells that were alive both before and after the update
         boards[:, :3].clamp_(0.0, 1.0)
         return boards
+    
+    
+destroy_masks = {}
 
-
-def destroy(
-    board: torch.Tensor, destroy_radius: int = 3, center: torch.Tensor = None
-) -> torch.Tensor:
-    assert center is not None and destroy_radius is not None
-    assert destroy_radius % 2 == 1
+def destroy(board: torch.Tensor,
+            center: torch.Tensor,          # (B, 2) – [y, x] per sample
+            destroy_radius: int = 3) -> torch.Tensor:
     B, C, H, W = board.shape
-    if center is not None:
-        center = torch.randint(0, GEN_SIZE(0), size=(2))  # maybe normal?
-    padded_board = F.pad(board, (destroy_radius, destroy_radius))
-    padded_board[
-        :,
-        :,
-        center[0] - destroy_radius : center[0] + destroy_radius,
-        center[1] - destroy_radius : center[1] + destroy_radius,
-    ] = 0
-    return padded_board[
-        :, :, destroy_radius : destroy_radius + H, destroy_radius : destroy_radius + W
-    ]
+    pad = destroy_radius
+    padded = F.pad(board, (pad, pad, pad, pad))           # left, right, top, bottom
+
+    # pre-compute offset list for this radius
+    if destroy_radius not in destroy_masks:
+        offs = [(dy, dx)
+                for dy in range(-pad, pad + 1)
+                for dx in range(-pad, pad + 1)
+                if dy*dy + dx*dx < pad*pad]
+        destroy_masks[destroy_radius] = torch.as_tensor(
+            offs, dtype=torch.long, device=board.device)  # (K, 2)
+
+    offsets = destroy_masks[destroy_radius]               # (K, 2)
+    K = offsets.size(0)
+
+    # absolute coords in padded tensor
+    coords = center.long().unsqueeze(1) + offsets.unsqueeze(0) + pad  # (B, K, 2)
+    y, x = coords[..., 0], coords[..., 1]                             # (B, K)
+
+    b = torch.arange(B, device=board.device).view(B, 1).expand(-1, K) # (B, K)
+
+    # zero-out the selected pixels across all channels
+    padded[b, :, y, x] = 0
+
+    return padded[:, :, pad:pad+H, pad:pad+W]
 
 
 def to_onnx(torch_model: CAGetBoard):
