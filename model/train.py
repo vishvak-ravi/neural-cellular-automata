@@ -13,9 +13,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 LR = 2e-3
 STEPS = 8000
 ITER_RANGE = (64, 96)
+DESTROY_RAD_RANGE = (0.1, 0.4)
 
-DESTROY_RAD_MEAN = 8
-DESTROY_RAD_VAR = 3
 
 class NCATask(Enum):
     GROW = "grow"
@@ -44,7 +43,7 @@ def train(
     seed = seed.to(device)
     target = target.to(device)
     target = target.unsqueeze(0).repeat(bs, 1, 1, 1)
-    
+
     pool = torch.stack([seed.clone() for _ in range(pool_size)], dim=0)
 
     # optimizer + loss
@@ -66,22 +65,30 @@ def train(
         sampled_boards = pool[pool_sample]
         if (
             task == NCATask.PERSIST or task == NCATask.REGENERATE
-        ):  # non growing tasks require modifying the pool...
+        ):  # non growing tasks require modifying the sample...
             with torch.no_grad():
                 pre_imgs = sampled_boards[:, :4]
                 pre_loss = (pre_imgs - target).square().mean((1, 2, 3))
-            rank = pre_loss.argsort(descending=True)
+                rank = pre_loss.argsort(descending=True)
 
-            sampled_boards = sampled_boards[rank]
-            sampled_boards[0].copy_(seed)
+                sampled_boards = sampled_boards[rank]
+                sampled_boards[0] = seed
 
-            if task == NCATask.REGENERATE:
-                B, _, H, W = sampled_boards.shape
-                centers = torch.cat(
-                    (torch.randint(PAD_AMT, H - PAD_AMT, (6, 1)), torch.randint(PAD_AMT, W-PAD_AMT, (6, 1))), dim=1
-                )
-                radius = DESTROY_RAD_MEAN + torch.randn((2,)) * DESTROY_RAD_VAR
-                sampled_boards[-2:] = destroy(sampled_boards[-2:], centers, radius)
+                if task == NCATask.REGENERATE:
+                    B, _, H, W = sampled_boards.shape
+                    centers = torch.cat(
+                        (
+                            torch.randint(PAD_AMT, H - PAD_AMT, (2, 1)),
+                            torch.randint(PAD_AMT, W - PAD_AMT, (2, 1)),
+                        ),
+                        dim=1,
+                    ).to(device)
+                    radius = DESTROY_RAD_RANGE[0] + (
+                        DESTROY_RAD_RANGE[1] - DESTROY_RAD_RANGE[0]
+                    ) * torch.rand(2, 1)
+                    sampled_boards[-2:] = destroy(sampled_boards[-2:], centers, radius)
+
+        opt.zero_grad()
         for _ in range(steps_till_opt):
             sampled_boards = update_board(sampled_boards)
         # time to calculate loss!
@@ -101,7 +108,6 @@ def train(
 
         opt.step()
         lr_sched.step()
-        opt.zero_grad()
 
         if task == NCATask.GROW:
             pool[pool_sample] = (
@@ -130,5 +136,5 @@ if __name__ == "__main__":
     # for task in tasks:
     #     for img_path in img_paths:
     #         train(f"{img_path}", state_size=16, task=task)
-    
-    train("data/src/small/bulbasaur.png", state_size=8, task=NCATask.REGENERATE)
+
+    train("data/src/small/bulbasaur.png", state_size=16, task=NCATask.REGENERATE)

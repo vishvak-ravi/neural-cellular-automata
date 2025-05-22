@@ -120,34 +120,34 @@ class CAGetBoard(torch.nn.Module):
         )  # only update cells that were alive both before and after the update
         boards[:, :3].clamp_(0.0, 1.0)
         return boards
-    
-    
-destroy_masks = {}                       # radius → (K,2) offsets
+
+
+destroy_masks = {}  # radius → (K,2) offsets
+
 
 def _offsets(r: int, device):
     if r not in destroy_masks:
-        pts = [(dy, dx)
-               for dy in range(-r, r + 1)
-               for dx in range(-r, r + 1)
-               if dy*dy + dx*dx < r*r]
+        pts = [
+            (dy, dx)
+            for dy in range(-r, r + 1)
+            for dx in range(-r, r + 1)
+            if dy * dy + dx * dx < r * r
+        ]
         destroy_masks[r] = torch.tensor(pts, dtype=torch.long, device=device)
     return destroy_masks[r]
 
-def destroy(board: torch.Tensor,
-            center: torch.Tensor,        # (B,2)  [y,x]
-            destroy_radius=3) -> torch.Tensor:
+
+def destroy(
+    board: torch.Tensor,
+    center: torch.Tensor,  # (B,2)  [y,x]
+    radius: torch.Tensor,
+) -> torch.Tensor:
     """
     `destroy_radius` can be int or (B,) tensor of ints (per-sample radii).
     """
-    if isinstance(destroy_radius, int):
-        destroy_radius = torch.full((board.size(0),),
-                                     destroy_radius,
-                                     dtype=torch.long,
-                                     device=board.device)
-    else:
-        destroy_radius = destroy_radius.to(board.device).long()
 
     B, C, H, W = board.shape
+    destroy_radius = (radius * ((H * W) ** 0.5))
     pad = int(destroy_radius.max())
     padded = F.pad(board, (pad, pad, pad, pad))
 
@@ -155,15 +155,16 @@ def destroy(board: torch.Tensor,
         idx = (destroy_radius == r).nonzero(as_tuple=False).squeeze(1)
         if idx.numel() == 0:
             continue
-        off = _offsets(int(r), board.device)            # (K,2)
+        off = _offsets(int(r), board.device)  # (K,2)
         coords = center[idx].long().unsqueeze(1) + off  # (B_r,K,2)
         coords += pad
-        y, x = coords[..., 0], coords[..., 1]           # (B_r,K)
+        y, x = coords[..., 0], coords[..., 1]  # (B_r,K)
         b_idx = idx.view(-1, 1).expand(-1, off.size(0))
         padded[b_idx, :, y, x] = 0
 
-    return padded[:, :, pad:pad+H, pad:pad+W]
-  
+    return padded[:, :, pad : pad + H, pad : pad + W]
+
+
 def to_onnx(torch_model: CAGetBoard, save_name: str, img_shape: tuple):
     example_input = torch.ones(
         1, DEF_STATE_SIZE, img_shape[0] + PAD_AMT, img_shape[1] + PAD_AMT
