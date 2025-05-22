@@ -3,7 +3,7 @@ from torch.optim.adamw import AdamW
 
 from enum import Enum
 
-from utils import CAGetBoard, init_board, destroy
+from utils import CAGetBoard, init_board, destroy, PAD_AMT
 from pathlib import Path
 import os
 import uuid
@@ -14,6 +14,8 @@ LR = 2e-3
 STEPS = 8000
 ITER_RANGE = (64, 96)
 
+DESTROY_RAD_MEAN = 8
+DESTROY_RAD_VAR = 3
 
 class NCATask(Enum):
     GROW = "grow"
@@ -42,6 +44,7 @@ def train(
     seed = seed.to(device)
     target = target.to(device)
     target = target.unsqueeze(0).repeat(bs, 1, 1, 1)
+    
     pool = torch.stack([seed.clone() for _ in range(pool_size)], dim=0)
 
     # optimizer + loss
@@ -75,11 +78,10 @@ def train(
             if task == NCATask.REGENERATE:
                 B, _, H, W = sampled_boards.shape
                 centers = torch.cat(
-                    (torch.randint(0, W, (2, 1)), torch.randint(0, H, (2, 1))), dim=1
+                    (torch.randint(PAD_AMT, H - PAD_AMT, (6, 1)), torch.randint(PAD_AMT, W-PAD_AMT, (6, 1))), dim=1
                 )
-                radius = torch.randint(2, 5, (1)).item()
-
-                sampled_boards[-2] = destroy(sampled_boards[-2], centers, radius)
+                radius = DESTROY_RAD_MEAN + torch.randn((2,)) * DESTROY_RAD_VAR
+                sampled_boards[-2:] = destroy(sampled_boards[-2:], centers, radius)
         for _ in range(steps_till_opt):
             sampled_boards = update_board(sampled_boards)
         # time to calculate loss!
@@ -123,9 +125,10 @@ def train(
 
 
 if __name__ == "__main__":
-    tasks = [NCATask.GROW, NCATask.PERSIST]
-    img_paths = list(Path("data/src/small").glob("*.png"))
-    for task in tasks:
-        for img_path in img_paths:
-            train(f"{img_path}", state_size=16, task=task)
-    # train("charizard_x.png", state_size=24, task=NCATask.PERSIST)
+    # tasks = [NCATask.GROW, NCATask.PERSIST]
+    # img_paths = list(Path("data/src/small").glob("*.png"))
+    # for task in tasks:
+    #     for img_path in img_paths:
+    #         train(f"{img_path}", state_size=16, task=task)
+    
+    train("data/src/small/bulbasaur.png", state_size=8, task=NCATask.REGENERATE)

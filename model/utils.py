@@ -122,35 +122,45 @@ class CAGetBoard(torch.nn.Module):
         return boards
     
     
-destroy_masks = {}
+destroy_masks = {}                       # radius → (K,2) offsets
+
+def _offsets(r: int, device):
+    if r not in destroy_masks:
+        pts = [(dy, dx)
+               for dy in range(-r, r + 1)
+               for dx in range(-r, r + 1)
+               if dy*dy + dx*dx < r*r]
+        destroy_masks[r] = torch.tensor(pts, dtype=torch.long, device=device)
+    return destroy_masks[r]
 
 def destroy(board: torch.Tensor,
-            center: torch.Tensor,          # (B, 2) – [y, x] per sample
-            destroy_radius: int = 3) -> torch.Tensor:
+            center: torch.Tensor,        # (B,2)  [y,x]
+            destroy_radius=3) -> torch.Tensor:
+    """
+    `destroy_radius` can be int or (B,) tensor of ints (per-sample radii).
+    """
+    if isinstance(destroy_radius, int):
+        destroy_radius = torch.full((board.size(0),),
+                                     destroy_radius,
+                                     dtype=torch.long,
+                                     device=board.device)
+    else:
+        destroy_radius = destroy_radius.to(board.device).long()
+
     B, C, H, W = board.shape
-    pad = destroy_radius
-    padded = F.pad(board, (pad, pad, pad, pad))           # left, right, top, bottom
+    pad = int(destroy_radius.max())
+    padded = F.pad(board, (pad, pad, pad, pad))
 
-    # pre-compute offset list for this radius
-    if destroy_radius not in destroy_masks:
-        offs = [(dy, dx)
-                for dy in range(-pad, pad + 1)
-                for dx in range(-pad, pad + 1)
-                if dy*dy + dx*dx < pad*pad]
-        destroy_masks[destroy_radius] = torch.as_tensor(
-            offs, dtype=torch.long, device=board.device)  # (K, 2)
-
-    offsets = destroy_masks[destroy_radius]               # (K, 2)
-    K = offsets.size(0)
-
-    # absolute coords in padded tensor
-    coords = center.long().unsqueeze(1) + offsets.unsqueeze(0) + pad  # (B, K, 2)
-    y, x = coords[..., 0], coords[..., 1]                             # (B, K)
-
-    b = torch.arange(B, device=board.device).view(B, 1).expand(-1, K) # (B, K)
-
-    # zero-out the selected pixels across all channels
-    padded[b, :, y, x] = 0
+    for r in destroy_radius.unique():
+        idx = (destroy_radius == r).nonzero(as_tuple=False).squeeze(1)
+        if idx.numel() == 0:
+            continue
+        off = _offsets(int(r), board.device)            # (K,2)
+        coords = center[idx].long().unsqueeze(1) + off  # (B_r,K,2)
+        coords += pad
+        y, x = coords[..., 0], coords[..., 1]           # (B_r,K)
+        b_idx = idx.view(-1, 1).expand(-1, off.size(0))
+        padded[b_idx, :, y, x] = 0
 
     return padded[:, :, pad:pad+H, pad:pad+W]
   
