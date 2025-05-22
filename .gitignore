@@ -3,3 +3,4 @@ board*
 *.DS_Store*
 data/experiments/
 scratch.md
+runs/

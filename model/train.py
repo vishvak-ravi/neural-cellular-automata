@@ -1,17 +1,17 @@
 import torch, torchvision
 from torch.optim.adamw import AdamW
+from torch.utils.tensorboard import SummaryWriter
 
 from enum import Enum
 
 from utils import CAGetBoard, init_board, destroy, PAD_AMT
 from pathlib import Path
-import os
-import uuid
+import os, time, uuid
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 LR = 2e-3
-STEPS = 8000
+STEPS = 16000
 ITER_RANGE = (64, 96)
 DESTROY_RAD_RANGE = (0.1, 0.4)
 
@@ -34,6 +34,9 @@ def train(
     exp_path = f"data/experiments/{run_name}_{uuid.uuid4()}"
     os.makedirs(exp_path, exist_ok=False)
 
+    logger = SummaryWriter("runs/")
+    logger.add_text("exp_path", exp_path)
+
     update_board = CAGetBoard(state_size=state_size).to(device)
 
     # set up the pool and save the resized target image
@@ -51,12 +54,13 @@ def train(
         update_board.parameters(),
         lr=LR,
     )
-    lr_sched = torch.optim.lr_scheduler.LambdaLR(
-        opt, lr_lambda=lambda step: 1.0 if step < 2000 else 0.1
+    lr_sched = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        opt, 500
     )
     loss_fn = torch.nn.MSELoss().to(device)
 
     for steps in range(STEPS):  # number of optimization steps
+        t0 = time.time()
         steps_till_opt = int(
             (ITER_RANGE[0] + (ITER_RANGE[1] - ITER_RANGE[0]) * torch.rand(1)).item()
         )  # number of CA steps until optimization
@@ -85,7 +89,9 @@ def train(
                     ).to(device)
                     radius = DESTROY_RAD_RANGE[0] + (
                         DESTROY_RAD_RANGE[1] - DESTROY_RAD_RANGE[0]
-                    ) * torch.rand(2, 1)
+                    ) * torch.rand(
+                        2,
+                    )
                     sampled_boards[-2:] = destroy(sampled_boards[-2:], centers, radius)
 
         opt.zero_grad()
@@ -116,6 +122,14 @@ def train(
         else:
             pool[pool_sample] = sampled_boards.detach()
 
+        if steps % 100 == 0:
+            logger.add_scalar("time", time.time() - t0)
+            logger.add_scalar("loss", loss_val)
+            grid = torchvision.utils.make_grid(
+                board_imgs, nrow=int(bs**0.5), normalize=True, value_range=(0, 1)
+            )
+            logger.add_image("board", grid, dataformats="CHW")
+
         if steps % 1000 == 0:
             print(loss_val)
             torchvision.utils.save_image(
@@ -137,4 +151,4 @@ if __name__ == "__main__":
     #     for img_path in img_paths:
     #         train(f"{img_path}", state_size=16, task=task)
 
-    train("data/src/small/bulbasaur.png", state_size=16, task=NCATask.REGENERATE)
+    train("data/src/zekrom.png", state_size=32, task=NCATask.REGENERATE)
