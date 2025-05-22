@@ -1,3 +1,4 @@
 board*
 **pycache**
 *.DS_Store*
+data/experiments/

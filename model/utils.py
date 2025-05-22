@@ -1,16 +1,17 @@
 import torch, torchvision
-from torchvision.transforms.transforms import CenterCrop
+from torchvision.transforms.transforms import Pad
 import torch.nn.functional as F
 from torch import nn
 from torch.optim.adamw import AdamW
 
-GEN_SIZE = (48, 48)
+DEF_STATE_SIZE = 16
+PAD_AMT = 12
 EPS = 0.5
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def init_board(img_path: str, init_val: float = None) -> torch.Tensor:
+def init_board(img_path: str, state_size: int = DEF_STATE_SIZE) -> torch.Tensor:
     # Load RGBA → float32 ∈ [0,1]
     img = (
         torchvision.io.read_image(
@@ -18,18 +19,14 @@ def init_board(img_path: str, init_val: float = None) -> torch.Tensor:
         ).float()
         / 255.0
     )
-    img = CenterCrop(GEN_SIZE)(img)
+    img = Pad(PAD_AMT)(img)
     # Binary alpha: 0 if fully transparent else 1
     img[3] = (img[3] > 0).float()
     img[:3] *= img[3].unsqueeze(0)  # multiply RGB channels by alpha mask
 
     target = img
     C, H, W = img.shape
-    if init_val is not None:
-        features = torch.full((16, H, W), init_val)
-    else:
-        features = torch.rand(16, H, W)
-
+    features = torch.zeros((state_size, H, W))
     features[3, H // 2, W // 2] = 1.0  # set the seed
 
     return features, target
@@ -68,10 +65,10 @@ def get_perception(state_grid: torch.Tensor) -> torch.Tensor:
 
 
 class CAUpdate(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, state_size=DEF_STATE_SIZE):
         super().__init__()
-        self.layer1 = nn.Conv2d(48, 128, 1)
-        self.layer2 = nn.Conv2d(128, 16, 1)
+        self.layer1 = nn.Conv2d(state_size * 3, 128, 1)
+        self.layer2 = nn.Conv2d(128, state_size, 1)
         nn.init.constant_(self.layer2.weight, 0)
         nn.init.constant_(self.layer2.bias, 0)
         self.act1 = nn.ReLU()
@@ -89,9 +86,9 @@ class CAUpdate(torch.nn.Module):
 
 
 class CAGetBoard(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, state_size=DEF_STATE_SIZE):
         super().__init__()
-        self.model = CAUpdate()
+        self.model = CAUpdate(state_size=state_size)
 
     def forward(self, x):
         """
@@ -156,11 +153,13 @@ def destroy(board: torch.Tensor,
     padded[b, :, y, x] = 0
 
     return padded[:, :, pad:pad+H, pad:pad+W]
+  
+def to_onnx(torch_model: CAGetBoard, save_name: str, img_shape: tuple):
+    example_input = torch.ones(
+        1, DEF_STATE_SIZE, img_shape[0] + PAD_AMT, img_shape[1] + PAD_AMT
+    )
 
-
-def to_onnx(torch_model: CAGetBoard):
-    example_input = torch.ones(1, 16, GEN_SIZE[0], GEN_SIZE[1])
     # quantize + prune and retrain later
     onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
     onxx_program.optimize()
-    onxx_program.save("data/params/mudkip.onnx")
+    onxx_program.save(f"data/params/{save_name}.onnx")
