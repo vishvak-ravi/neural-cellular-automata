@@ -1,11 +1,9 @@
 import torch, torchvision
-import torch.nn.functional as F
 from torch.optim.adamw import AdamW
 
 from enum import Enum
 
-from utils import CAGetBoard, init_board, get_perception
-from PIL import Image, ImageDraw, ImageFont
+from utils import CAGetBoard, init_board, destroy
 from pathlib import Path
 import os
 import uuid
@@ -73,6 +71,15 @@ def train(
 
             sampled_boards = sampled_boards[rank]
             sampled_boards[0].copy_(seed)
+
+            if task == NCATask.REGENERATE:
+                B, _, H, W = sampled_boards.shape
+                centers = torch.cat(
+                    (torch.randint(0, W, (2, 1)), torch.randint(0, H, (2, 1))), dim=1
+                )
+                radius = torch.randint(2, 5, (1)).item()
+
+                sampled_boards[-2] = destroy(sampled_boards[-2], centers, radius)
         for _ in range(steps_till_opt):
             sampled_boards = update_board(sampled_boards)
         # time to calculate loss!
@@ -98,7 +105,7 @@ def train(
             pool[pool_sample] = (
                 seed.unsqueeze(0).repeat(bs, 1, 1, 1).to(device).detach()
             )
-        elif task == NCATask.PERSIST:
+        else:
             pool[pool_sample] = sampled_boards.detach()
 
         if steps % 1000 == 0:
