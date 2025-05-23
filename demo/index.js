@@ -125,7 +125,7 @@ function render(now) {
   // handle destruction
   let destructionCenterCoords = getDestructionCenterTexCoords();
   if (destructionCenterCoords != null) {
-    console.log(destructionCenterCoords);
+    nca.destroyAt(destructionCenterCoords);
     // nca.destroyAt(destructionCenterCoords);
   }
 
