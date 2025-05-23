@@ -67,8 +67,8 @@ def get_perception(state_grid: torch.Tensor) -> torch.Tensor:
 class CAUpdate(torch.nn.Module):
     def __init__(self, state_size=DEF_STATE_SIZE):
         super().__init__()
-        self.layer1 = nn.Conv2d(state_size * 3, 128, 1)
-        self.layer2 = nn.Conv2d(128, state_size, 1)
+        self.layer1 = nn.Conv2d(state_size * 3, state_size * 8, 1)
+        self.layer2 = nn.Conv2d(state_size * 8, state_size, 1)
         nn.init.constant_(self.layer2.weight, 0)
         nn.init.constant_(self.layer2.bias, 0)
         self.act1 = nn.ReLU()

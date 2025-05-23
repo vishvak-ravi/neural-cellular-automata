@@ -11,7 +11,7 @@ import os, time, uuid
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 LR = 2e-3
-STEPS = 16000
+STEPS = 10000
 ITER_RANGE = (64, 96)
 DESTROY_RAD_RANGE = (0.1, 0.4)
 
@@ -28,16 +28,20 @@ def train(
     bs: int = 8,
     pool_size: int = 1024,
     task: NCATask = NCATask.REGENERATE,
+    load_from: str = None,
 ):
     img_name = img_path.split("/")[-1].split(".")[0]
     run_name = f"{img_name}_{task.value}"
-    exp_path = f"data/experiments/{run_name}_{uuid.uuid4()}"
+    exp_name = f"{run_name}_{uuid.uuid4()}"
+    exp_path = f"data/experiments/{exp_name}"
     os.makedirs(exp_path, exist_ok=False)
 
-    logger = SummaryWriter("runs/")
+    logger = SummaryWriter(f"runs/{exp_name}")
     logger.add_text("exp_path", exp_path)
 
     update_board = CAGetBoard(state_size=state_size).to(device)
+    if load_from is not None:
+        update_board.load_state_dict(torch.load(load_from))
 
     # set up the pool and save the resized target image
     if task == NCATask.GROW:
@@ -54,9 +58,7 @@ def train(
         update_board.parameters(),
         lr=LR,
     )
-    lr_sched = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        opt, 500
-    )
+    lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, STEPS)
     loss_fn = torch.nn.MSELoss().to(device)
 
     for steps in range(STEPS):  # number of optimization steps
@@ -123,12 +125,12 @@ def train(
             pool[pool_sample] = sampled_boards.detach()
 
         if steps % 100 == 0:
-            logger.add_scalar("time", time.time() - t0)
-            logger.add_scalar("loss", loss_val)
+            logger.add_scalar("time", time.time() - t0, steps)
+            logger.add_scalar("loss", loss_val.item(), steps)
             grid = torchvision.utils.make_grid(
-                board_imgs, nrow=int(bs**0.5), normalize=True, value_range=(0, 1)
+                board_imgs[:, :3], nrow=int(bs**0.5), normalize=True, value_range=(0, 1)
             )
-            logger.add_image("board", grid, dataformats="CHW")
+            logger.add_image("board", grid, steps, dataformats="CHW")
 
         if steps % 1000 == 0:
             print(loss_val)
@@ -142,13 +144,20 @@ def train(
                 torch.save(update_board.state_dict(), f"{exp_path}/params_{steps}.pt")
     # Save model weights at the end of training
     torch.save(update_board.state_dict(), f"{exp_path}/params.pt")
+    logger.close()
 
 
 if __name__ == "__main__":
-    # tasks = [NCATask.GROW, NCATask.PERSIST]
+    # tasks = [NCATask.REGENERATE]
     # img_paths = list(Path("data/src/small").glob("*.png"))
     # for task in tasks:
     #     for img_path in img_paths:
-    #         train(f"{img_path}", state_size=16, task=task)
+    #         state_size = 32 if "mewtwo" in img_path.name else 16
+    #         train(f"{img_path}", state_size=state_size, task=task)
 
-    train("data/src/zekrom.png", state_size=32, task=NCATask.REGENERATE)
+    train(
+        "data/src/small/mewtwo.png",
+        state_size=32,
+        task=NCATask.REGENERATE,
+        # load_from="data/experiments/mewtwo_regenerate_0fb64bb6-5bc2-41c2-8bea-5e50145bd242/params.pt",
+    )
