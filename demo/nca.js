@@ -13,8 +13,8 @@ function getOffsetsInRadius(radius) {
   return result;
 }
 const destroyOffsets = getOffsetsInRadius(DESTROY_RADIUS);
-
-const session = await ort.InferenceSession.create("../data/params/mudkip.onnx");
+const model_path = "models/mudkip.onnx";
+const session = await ort.InferenceSession.create(model_path);
 const inputData = new Float32Array(1 * 16 * SIZE * SIZE);
 const inputShape = [1, 16, SIZE, SIZE];
 const tensor = new ort.Tensor("float32", inputData, inputShape);
@@ -72,10 +72,10 @@ export class NCA {
       SIZE,
       SIZE,
     ]);
-    const { slice_scatter_1: newState } = await this.session.run({
+    const { tanh: newState } = await this.session.run({
       x: flippedTensor,
     });
-    const rawOut = newState.data;
+    const rawOut = newState.cpuData;
 
     // flip Y back on output
     const unflipped = new Float32Array(rawOut.length);
