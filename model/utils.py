@@ -147,7 +147,7 @@ def destroy(
     """
 
     B, C, H, W = board.shape
-    destroy_radius = (radius * ((H * W) ** 0.5))
+    destroy_radius = radius * ((H * W) ** 0.5)
     pad = int(destroy_radius.max())
     padded = F.pad(board, (pad, pad, pad, pad))
 
@@ -166,9 +166,7 @@ def destroy(
 
 
 def to_onnx(torch_model: CAGetBoard, save_name: str, img_shape: tuple):
-    example_input = torch.ones(
-        1, DEF_STATE_SIZE, img_shape[0] + PAD_AMT, img_shape[1] + PAD_AMT
-    )
+    example_input = torch.zeros(img_shape)
 
     # quantize + prune and retrain later
     onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
