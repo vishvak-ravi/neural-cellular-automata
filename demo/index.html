@@ -2,13 +2,13 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Neural Cellular Automata Demo</title>
+    <title>Neural Cellular Automata</title>
     <link rel="stylesheet" href="index.css" />
     <!-- add here -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   </head>
   <body>
-    <h1>Neural Cellular Automata Demo</h1>
+    <h1>Neural Cellular Automata</h1>
     <div class="window-parent">
       <div class="canvas-parent">
         <canvas id="c" width="512" height="512"></canvas>
@@ -16,12 +16,49 @@
         <script type="module" src="./index.js"></script>
       </div>
       <div class="settings-parent">
-        <div class="subject-selection">Choose Your Pokemon</div>
+        <div class="subject-selection">
+          <div class="subject" id="pikachu">
+            <img
+              src="pokemon/pikachu.png"
+              alt="pikachu"
+              width="50"
+              height="50"
+            />
+          </div>
+          <div class="subject" id="mudkip">
+            <img src="pokemon/mudkip.png" alt="mudkip" width="50" height="50" />
+          </div>
+          <div class="subject" id="bulbasaur">
+            <img
+              src="pokemon/bulbasaur.png"
+              alt="bulbasaur"
+              width="50"
+              height="50"
+            />
+          </div>
+          <div class="subject" id="cyndaquil">
+            <img
+              src="pokemon/cyndaquil.png"
+              alt="cyndaquil"
+              width="50"
+              height="50"
+            />
+          </div>
+        </div>
         <div class="simulation-settings">
-          <label for="speed"
-            >Updates per second: <span id="fpsVal">10</span></label
-          >
-          <input type="range" id="speed" min="1" max="60" value="10" />
+          <select id="modelSelector">
+            <option value="Grow">Grow</option>
+            <option value="Persist">Persist</option>
+            <option value="Regenerate">Regenerate</option>
+          </select>
+          <div>
+            <label for="speed"
+              >Updates per second: <span id="fpsVal">10</span></label
+            >
+            <input type="range" id="speed" min="1" max="60" value="10" />
+          </div>
+
+          <button id="resetButton">Reset</button>
         </div>
       </div>
     </div>

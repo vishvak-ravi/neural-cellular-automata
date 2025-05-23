@@ -1,5 +1,5 @@
 // index.js
-import { SIZE, NCA } from "./nca.js";
+import { NCA } from "./nca.js";
 
 ("use strict");
 let nca = new NCA();
@@ -62,12 +62,12 @@ gl.texImage2D(
   gl.TEXTURE_2D,
   0,
   gl.RGB32F,
-  SIZE,
-  SIZE,
+  nca.SIZE,
+  nca.SIZE,
   0,
   gl.RGB,
   gl.FLOAT,
-  nca.get_board() /* TODO make sure ths mem address dont change */
+  nca.get_board()
 );
 gl.uniform1i(gl.getUniformLocation(prog, "u_board"), 0);
 
@@ -101,11 +101,54 @@ function getDestructionCenterTexCoords() {
   if (localX < 0 || localY < 0 || localX > rect.width || localY > rect.height)
     return null; // cursor outside canvas
 
-  const texX = Math.floor((localX / rect.width) * SIZE);
+  const texX = Math.floor((localX / rect.width) * nca.SIZE);
   // WebGL (0,0) is bottom-left; DOM (0,0) is top-left → flip Y
-  const texY = Math.floor(((rect.height - localY) / rect.height) * SIZE);
+  const texY = Math.floor(((rect.height - localY) / rect.height) * nca.SIZE);
 
   return { x: texX, y: texY };
+}
+
+/*========================  SETTINGS  ========================*/
+const resetHandler = {
+  handleClick: function () {
+    nca.reset();
+  },
+};
+
+document
+  .getElementById("resetButton")
+  .addEventListener("click", () => resetHandler.handleClick());
+
+const modeSelectionHandler = {
+  handleClick: function (event) {
+    const selectedMode = event.target.value;
+    nca.set_mode(selectedMode);
+  },
+};
+
+document
+  .getElementById("modelSelector")
+  .addEventListener("change", function () {
+    nca.updateModel(nca.name, this.value);
+  });
+
+const pokemon = ["bulbasaur", "pikachu", "cyndaquil", "mudkip"];
+
+for (let pokemonName of pokemon) {
+  document.getElementById(pokemonName).addEventListener("click", function () {
+    nca.updateModel(pokemonName, nca.mode);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGB32F,
+      nca.SIZE,
+      nca.SIZE,
+      0,
+      gl.RGB,
+      gl.FLOAT,
+      nca.get_board()
+    );
+  });
 }
 
 /*========================  GAME LOOP  ========================*/
@@ -132,21 +175,22 @@ function render(now) {
   if (now - last >= 1000 / fps) {
     // throttle by chosen FPS
     nca.step();
-    let board = nca.get_board();
-    gl.texSubImage2D(
-      gl.TEXTURE_2D,
-      0,
-      0,
-      0,
-      SIZE,
-      SIZE,
-      gl.RGB,
-      gl.FLOAT,
-      board
-    );
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
     last = now;
   }
+  let board = nca.get_board();
+  gl.texSubImage2D(
+    gl.TEXTURE_2D,
+    0,
+    0,
+    0,
+    nca.SIZE,
+    nca.SIZE,
+    gl.RGB,
+    gl.FLOAT,
+    board
+  );
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
