@@ -12,7 +12,6 @@ if __name__ == "__main__":
             src_image = f"data/src/small/{name}.png"
             features, _ = init_board(src_image, 16)
             C, H, W = features.shape
-            features = features.view(1, C, H, W)
 
             torch_model = CAGetBoard()
             torch_model.load_state_dict(
@@ -20,7 +19,7 @@ if __name__ == "__main__":
                     f"data/params/{model_name}.pt", map_location=torch.device("cpu")
                 )
             )
-            to_onnx(torch_model, model_name, features.shape)
+            to_onnx(torch_model, model_name, (1, C, max(H, W), max(H, W)))
 
             # validate onxx
             onnx_model = onnx.load(f"data/params/{model_name}.onnx")
