@@ -101,15 +101,11 @@ canvas {
   align-items: left;
   border-radius: 8px;
   border: 1px solid #343434;
+  padding: 10px;
 }
 
 .info {
-  font-size: small;
-}
-
-.a-setting {
-  padding: 10px;
-  margin: 10px;
+  font-size: medium;
 }
 
 .a-setting-title {
