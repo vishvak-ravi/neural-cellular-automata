@@ -2,8 +2,11 @@
 import { NCA } from "./nca.js";
 
 ("use strict");
-let nca = new NCA();
-
+const pokemon = ["bulbasaur", "pikachu", "cyndaquil", "mudkip"];
+let initModel = "pikachu"; // default model
+let initMode = "grow"; // default mode
+let nca = new NCA(initModel, initMode);
+document.getElementById(initModel).classList.add("subject-selected");
 /*========================  SHADERS  ========================*/
 const vs = `#version 300 es
 in vec2 a_position;
@@ -109,6 +112,8 @@ function getDestructionCenterTexCoords() {
 }
 
 /*========================  SETTINGS  ========================*/
+var pause = false;
+
 const resetHandler = {
   handleClick: function () {
     nca.reset();
@@ -118,6 +123,16 @@ const resetHandler = {
 document
   .getElementById("resetButton")
   .addEventListener("click", () => resetHandler.handleClick());
+
+const pauseHandler = {
+  handleClick: function () {
+    pause = !pause;
+  },
+};
+
+document
+  .getElementById("pauseButton")
+  .addEventListener("click", () => pauseHandler.handleClick());
 
 const modeSelectionHandler = {
   handleClick: function (event) {
@@ -131,8 +146,6 @@ document
   .addEventListener("change", function () {
     nca.updateModel(nca.name, this.value);
   });
-
-const pokemon = ["bulbasaur", "pikachu", "cyndaquil", "mudkip"];
 
 for (let pokemonName of pokemon) {
   document.getElementById(pokemonName).addEventListener("click", function () {
@@ -148,6 +161,12 @@ for (let pokemonName of pokemon) {
       gl.FLOAT,
       nca.get_board()
     );
+
+    // Update CSS classes
+    for (let other of pokemon) {
+      document.getElementById(other).classList.remove("subject-selected");
+    }
+    this.classList.add("subject-selected");
   });
 }
 
@@ -172,7 +191,7 @@ function render(now) {
     // nca.destroyAt(destructionCenterCoords);
   }
 
-  if (now - last >= 1000 / fps) {
+  if (now - last >= 1000 / fps && !pause) {
     // throttle by chosen FPS
     nca.step();
     last = now;

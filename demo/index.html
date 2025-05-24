@@ -16,49 +16,84 @@
         <script type="module" src="./index.js"></script>
       </div>
       <div class="settings-parent">
-        <div class="subject-selection">
-          <div class="subject" id="pikachu">
-            <img
-              src="pokemon/pikachu.png"
-              alt="pikachu"
-              width="50"
-              height="50"
-            />
-          </div>
-          <div class="subject" id="mudkip">
-            <img src="pokemon/mudkip.png" alt="mudkip" width="50" height="50" />
-          </div>
-          <div class="subject" id="bulbasaur">
-            <img
-              src="pokemon/bulbasaur.png"
-              alt="bulbasaur"
-              width="50"
-              height="50"
-            />
-          </div>
-          <div class="subject" id="cyndaquil">
-            <img
-              src="pokemon/cyndaquil.png"
-              alt="cyndaquil"
-              width="50"
-              height="50"
-            />
+        <div>
+          <h4>Select a target:</h4>
+          <div class="subject-selection">
+            <div class="subject" id="pikachu">
+              <img
+                src="pokemon/pikachu.png"
+                alt="pikachu"
+                width="50"
+                height="50"
+              />
+            </div>
+            <div class="subject" id="mudkip">
+              <img
+                src="pokemon/mudkip.png"
+                alt="mudkip"
+                width="50"
+                height="50"
+              />
+            </div>
+            <div class="subject" id="bulbasaur">
+              <img
+                src="pokemon/bulbasaur.png"
+                alt="bulbasaur"
+                width="50"
+                height="50"
+              />
+            </div>
+            <div class="subject" id="cyndaquil">
+              <img
+                src="pokemon/cyndaquil.png"
+                alt="cyndaquil"
+                width="50"
+                height="50"
+              />
+            </div>
           </div>
         </div>
-        <div class="simulation-settings">
-          <select id="modelSelector">
-            <option value="Grow">Grow</option>
-            <option value="Persist">Persist</option>
-            <option value="Regenerate">Regenerate</option>
-          </select>
-          <div>
-            <label for="speed"
-              >Updates per second: <span id="fpsVal">10</span></label
-            >
-            <input type="range" id="speed" min="1" max="60" value="10" />
-          </div>
 
-          <button id="resetButton">Reset</button>
+        <div class="simulation-settings">
+          <div class="a-setting">
+            <div class="a-setting-title">
+              <h4>Objective:</h4>
+              <select class="model-selector" id="modelSelector">
+                <option value="Grow">Grow</option>
+                <option value="Persist">Persist</option>
+                <option value="Regenerate">Regenerate</option>
+              </select>
+            </div>
+
+            <p class="info">
+              <b>Grow:</b> Cellular automata is trained to achieve a
+              reconstruction target within a number of iterations—but it doesn't
+              know what to do after...
+            </p>
+            <p class="info">
+              <b>Persist:</b> Cellular automata is trained to reconstruct the
+              target from various starting states—including fully-reconstructed
+              ones.
+            </p>
+            <p class="info">
+              <b>Regenerate:</b> Similar to the 'persist' objective, however the
+              samples from the pool are exposed to damage, allowing the model to
+              learn to "regrow" damaged cells.
+            </p>
+          </div>
+          <div class="a-setting">
+            <h4>Speed:</h4>
+            <div class="speed-setting">
+              <div>
+                <input type="range" id="speed" min="1" max="120" value="60" />
+                <label for="speed"><span id="fpsVal">60</span> fps</label>
+              </div>
+              <div>
+                <button class="model-selector" id="pauseButton">Pause</button>
+                <button class="model-selector" id="resetButton">Reset</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

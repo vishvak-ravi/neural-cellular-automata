@@ -1,4 +1,4 @@
-const DESTROY_RADIUS = 3;
+const DESTROY_RADIUS = 5;
 const NAME_TO_SIZE = {
   mudkip: 67,
   cyndaquil: 68,
@@ -20,8 +20,8 @@ function getOffsetsInRadius(radius) {
 const destroyOffsets = getOffsetsInRadius(DESTROY_RADIUS);
 
 export class NCA {
-  constructor() {
-    this.updateModel("mudkip", "persist");
+  constructor(name, mode) {
+    this.updateModel(name, mode);
   }
 
   async init() {
