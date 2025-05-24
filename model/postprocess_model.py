@@ -4,16 +4,16 @@ from utils import CAGetBoard, to_onnx, init_board
 
 if __name__ == "__main__":
     # load and convert model
-    names = ["bulbasaur", "cyndaquil", "mudkip", "pikachu"]
-    tasks = ["grow", "persist", "regenerate"]
+    names = ["mewtwo"]
+    tasks = ["regenerate"]
     for task in tasks:
         for name in names:
             model_name = f"{name}_{task}"
-            src_image = f"data/src/small/{name}.png"
-            features, _ = init_board(src_image, 16)
+            src_image = f"data/src/{name}.png"
+            features, _ = init_board(src_image, 32)
             C, H, W = features.shape
 
-            torch_model = CAGetBoard()
+            torch_model = CAGetBoard(state_size=32)
             torch_model.load_state_dict(
                 torch.load(
                     f"data/params/{model_name}.pt", map_location=torch.device("cpu")

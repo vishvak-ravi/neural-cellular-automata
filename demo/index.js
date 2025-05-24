@@ -2,7 +2,7 @@
 import { NCA } from "./nca.js";
 
 ("use strict");
-const pokemon = ["bulbasaur", "pikachu", "cyndaquil", "mudkip"];
+const pokemon = ["bulbasaur", "pikachu", "cyndaquil", "mudkip", "mewtwo"];
 let initModel = "pikachu"; // default model
 let initMode = "grow"; // default mode
 let nca = new NCA(initModel, initMode);
@@ -133,13 +133,6 @@ const pauseHandler = {
 document
   .getElementById("pauseButton")
   .addEventListener("click", () => pauseHandler.handleClick());
-
-const modeSelectionHandler = {
-  handleClick: function (event) {
-    const selectedMode = event.target.value;
-    nca.set_mode(selectedMode);
-  },
-};
 
 document
   .getElementById("modelSelector")

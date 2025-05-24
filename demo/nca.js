@@ -4,6 +4,15 @@ const NAME_TO_SIZE = {
   cyndaquil: 68,
   bulbasaur: 61,
   pikachu: 73,
+  mewtwo: 94,
+};
+
+const NAME_TO_CHAN_COUNT = {
+  mudkip: 16,
+  cyndaquil: 16,
+  bulbasaur: 16,
+  pikachu: 16,
+  mewtwo: 32,
 };
 
 function getOffsetsInRadius(radius) {
@@ -50,7 +59,7 @@ export class NCA {
     if (this.session == null) {
       await this.init();
     }
-    const C = 16;
+    const C = this.CHAN_COUNT;
     const rawIn = this.tensor.data;
     // flip Y on input
     const flippedIn = new Float32Array(rawIn.length);
@@ -108,14 +117,14 @@ export class NCA {
       const iy = y + dy;
       if (ix >= 0 && ix < this.SIZE && iy >= 0 && iy < this.SIZE) {
         const base = iy * this.SIZE + ix; // index inside one channel
-        for (let c = 0; c < 16; ++c) {
+        for (let c = 0; c < this.CHAN_COUNT; ++c) {
           data[c * this.SIZE * this.SIZE + base] = 0; // zero every channel
         }
       }
     }
     this.tensor = new ort.Tensor("float32", data, [
       1,
-      16,
+      this.CHAN_COUNT,
       this.SIZE,
       this.SIZE,
     ]);
@@ -126,6 +135,7 @@ export class NCA {
     if (name != null) {
       this.name = name;
       this.SIZE = NAME_TO_SIZE[this.name];
+      this.CHAN_COUNT = NAME_TO_CHAN_COUNT[this.name];
     }
     if (mode != null) {
       this.mode = mode;
@@ -133,16 +143,18 @@ export class NCA {
     this.session = null;
     this.tensor = new ort.Tensor(
       "float32",
-      new Float32Array(1 * 16 * this.SIZE * this.SIZE),
-      [1, 16, this.SIZE, this.SIZE]
+      new Float32Array(1 * this.CHAN_COUNT * this.SIZE * this.SIZE),
+      [1, this.CHAN_COUNT, this.SIZE, this.SIZE]
     );
-    const inputData = new Float32Array(1 * 16 * this.SIZE * this.SIZE);
+    const inputData = new Float32Array(
+      1 * this.CHAN_COUNT * this.SIZE * this.SIZE
+    );
     const center = this.SIZE >> 1;
     // seed 4th channel at center to 1.0
     inputData[3 * this.SIZE * this.SIZE + center * this.SIZE + center] = 1.0;
     this.tensor = new ort.Tensor("float32", inputData, [
       1,
-      16,
+      this.CHAN_COUNT,
       this.SIZE,
       this.SIZE,
     ]);
