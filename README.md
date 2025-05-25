@@ -1,0 +1,2 @@
+# Neural Cellular Automata
+Basically, cellular automata meeting CNNs allow for automata to follow an "attracting" state through a reconstruction loss. The different training schemes give the cells different behaviors, but the "regenerate" task is the most powerful—allowing for the cells to rebuild upon damage.

@@ -11,7 +11,7 @@ import os, time, uuid
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 LR = 2e-3
-STEPS = 10000
+STEPS = 30000
 ITER_RANGE = (64, 96)
 DESTROY_RAD_RANGE = (0.1, 0.4)
 
@@ -25,6 +25,7 @@ class NCATask(Enum):
 def train(
     img_path: str,
     state_size: int = 16,
+    learned_features: bool = False,
     bs: int = 8,
     pool_size: int = 1024,
     task: NCATask = NCATask.REGENERATE,
@@ -39,7 +40,9 @@ def train(
     logger = SummaryWriter(f"runs/{exp_name}")
     logger.add_text("exp_path", exp_path)
 
-    update_board = CAGetBoard(state_size=state_size).to(device)
+    update_board = CAGetBoard(
+        state_size=state_size, learned_features=learned_features
+    ).to(device)
     if load_from is not None:
         update_board.load_state_dict(torch.load(load_from))
 
@@ -104,11 +107,15 @@ def train(
         loss_val = loss_fn(target, board_imgs)
 
         # grad norm helps
+        # collect (name,param) pairs first
+        named_params = list(update_board.named_parameters())
         grads = torch.autograd.grad(
-            loss_val, update_board.parameters(), retain_graph=True
+            loss_val, [p for _, p in named_params], retain_graph=True
         )
-        normalized_grads = [g / (g.norm() + 1e-8) for g in grads]
-        for p, g in zip(update_board.parameters(), normalized_grads):
+
+        for (name, p), g in zip(named_params, grads):
+            if "layer0" not in name:  # keep first layer raw
+                g = g / (g.norm() + 1e-8)
             if p.grad is None:
                 p.grad = g.clone()
             else:
@@ -148,15 +155,15 @@ def train(
 
 
 if __name__ == "__main__":
-    # tasks = [NCATask.REGENERATE]
-    # img_paths = list(Path("data/src/small").glob("*.png"))
+    # tasks = [NCATask.REGENERATE, NCATask]
+    # img_paths = list(Path("data/src/medium").glob("*.png"))
     # for task in tasks:
     #     for img_path in img_paths:
     #         state_size = 32 if "mewtwo" in img_path.name else 16
     #         train(f"{img_path}", state_size=state_size, task=task)
 
     train(
-        "data/src/small/mewtwo.png",
+        "data/src/medium/arceus.png",
         state_size=32,
         task=NCATask.REGENERATE,
         # load_from="data/experiments/mewtwo_regenerate_0fb64bb6-5bc2-41c2-8bea-5e50145bd242/params.pt",

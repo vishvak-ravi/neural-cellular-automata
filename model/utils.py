@@ -65,30 +65,35 @@ def get_perception(state_grid: torch.Tensor) -> torch.Tensor:
 
 
 class CAUpdate(torch.nn.Module):
-    def __init__(self, state_size=DEF_STATE_SIZE):
+    def __init__(self, state_size=DEF_STATE_SIZE, learned_features=False):
         super().__init__()
-        self.layer1 = nn.Conv2d(state_size * 3, state_size * 8, 1)
+        self.learned_features = learned_features
+        if learned_features:
+            self.layer0 = nn.Conv2d(state_size * 3, state_size * 4, 3, padding=1)
+            self.layer1 = nn.Conv2d(state_size * 4, state_size * 8, 1)
+        else:
+            self.layer1 = nn.Conv2d(state_size * 3, state_size * 8, 1)
         self.layer2 = nn.Conv2d(state_size * 8, state_size, 1)
         nn.init.constant_(self.layer2.weight, 0)
         nn.init.constant_(self.layer2.bias, 0)
         self.act1 = nn.ReLU()
-        self.act2 = nn.Tanh()
 
     def forward(self, x):
         """
         x : B x n x H x W
         """
+        if self.learned_features:
+            x = self.layer0(x)
         x = self.layer1(x)
         x = self.act1(x)
         x = self.layer2(x)
-        x = self.act2(x)
         return x
 
 
 class CAGetBoard(torch.nn.Module):
-    def __init__(self, state_size=DEF_STATE_SIZE):
+    def __init__(self, state_size=DEF_STATE_SIZE, learned_features=False):
         super().__init__()
-        self.model = CAUpdate(state_size=state_size)
+        self.model = CAUpdate(state_size=state_size, learned_features=learned_features)
 
     def forward(self, x):
         """
