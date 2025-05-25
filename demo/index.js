@@ -2,7 +2,15 @@
 import { NCA } from "./nca.js";
 
 ("use strict");
-const pokemon = ["bulbasaur", "pikachu", "cyndaquil", "mudkip", "mewtwo"];
+const pokemon = [
+  "bulbasaur",
+  "pikachu",
+  "cyndaquil",
+  "mudkip",
+  "mewtwo",
+  "arceus",
+  "darkrai",
+];
 let initModel = "pikachu"; // default model
 let initMode = "grow"; // default mode
 let nca = new NCA(initModel, initMode);

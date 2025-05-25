@@ -5,6 +5,8 @@ const NAME_TO_SIZE = {
   bulbasaur: 61,
   pikachu: 73,
   mewtwo: 94,
+  darkrai: 103,
+  arceus: 108,
 };
 
 const NAME_TO_CHAN_COUNT = {
@@ -13,6 +15,8 @@ const NAME_TO_CHAN_COUNT = {
   bulbasaur: 16,
   pikachu: 16,
   mewtwo: 32,
+  darkrai: 32,
+  arceus: 32,
 };
 
 function getOffsetsInRadius(radius) {

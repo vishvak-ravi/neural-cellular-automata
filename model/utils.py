@@ -77,6 +77,7 @@ class CAUpdate(torch.nn.Module):
         nn.init.constant_(self.layer2.weight, 0)
         nn.init.constant_(self.layer2.bias, 0)
         self.act1 = nn.ReLU()
+        self.act2 = nn.Tanh()
 
     def forward(self, x):
         """
@@ -87,6 +88,7 @@ class CAUpdate(torch.nn.Module):
         x = self.layer1(x)
         x = self.act1(x)
         x = self.layer2(x)
+        x = self.act2(x)
         return x
 
 
@@ -175,4 +177,4 @@ def to_onnx(torch_model: CAGetBoard, save_name: str, img_shape: tuple):
 
     # quantize + prune and retrain later
     onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
-    onxx_program.save(f"data/params/{save_name}.onnx")
+    onxx_program.save(f"demo/models/{save_name}.onnx")
