@@ -37,10 +37,18 @@ export class NCA {
     this.updateModel(name, mode);
   }
 
-  async init() {
-    this.session = await ort.InferenceSession.create(
-      "models/" + this.name + "_" + this.mode + ".onnx"
-    );
+  async init_session() {
+    try {
+      this.session = await ort.InferenceSession.create(
+        `models/${this.name}_${this.mode}.onnx`
+      );
+    } catch (err) {
+      if (/404|not.*found/i.test(String(err))) {
+        this.session = null; // file missing → null
+      } else {
+        throw err; // propagate other issues
+      }
+    }
   }
   _updateTexture(data) {
     // copy channels 0–2 into texture (H×W×3)
@@ -61,7 +69,7 @@ export class NCA {
 
   async step() {
     if (this.session == null) {
-      await this.init();
+      return;
     }
     const C = this.CHAN_COUNT;
     const rawIn = this.tensor.data;
@@ -164,6 +172,7 @@ export class NCA {
     ]);
     this.texture = new Float32Array(this.SIZE * this.SIZE * 3);
     this._updateTexture(inputData);
+    this.init_session();
   }
   reset() {
     this.updateModel(this.name, this.mode);

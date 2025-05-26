@@ -11,8 +11,18 @@ const pokemon = [
   "arceus",
   "darkrai",
 ];
+const unsupportedCombos = [
+  "mewtwo_grow",
+  "mewtwo_persist",
+  "darkrai_grow",
+  "darkrai_persist",
+  "arceus_grow",
+  "arceus_persist",
+];
 let initModel = "pikachu"; // default model
 let initMode = "grow"; // default mode
+const warningDiv = document.querySelector(".warning"); // CSS: .warning { display:none; }
+warningDiv.style.display = "none";
 let nca = new NCA(initModel, initMode);
 document.getElementById(initModel).classList.add("subject-selected");
 /*========================  SHADERS  ========================*/
@@ -144,31 +154,50 @@ document
 
 document
   .getElementById("modelSelector")
-  .addEventListener("change", function () {
-    nca.updateModel(nca.name, this.value);
+  .addEventListener("change", async (e) => {
+    const next = e.target.value;
+    const combo = `${nca.name}_${next}`;
+
+    if (unsupportedCombos.includes(combo)) {
+      warningDiv.style.display = "block";
+      e.target.value = nca.mode; // revert to previous choice
+      return;
+    }
+
+    warningDiv.style.display = "none";
+    await nca.updateModel(nca.name, next); // updateModel sets nca.mode internally
   });
 
 for (let pokemonName of pokemon) {
-  document.getElementById(pokemonName).addEventListener("click", function () {
-    nca.updateModel(pokemonName, nca.mode);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGB32F,
-      nca.SIZE,
-      nca.SIZE,
-      0,
-      gl.RGB,
-      gl.FLOAT,
-      nca.get_board()
-    );
-
-    // Update CSS classes
-    for (let other of pokemon) {
-      document.getElementById(other).classList.remove("subject-selected");
-    }
-    this.classList.add("subject-selected");
-  });
+  document
+    .getElementById(pokemonName)
+    .addEventListener("click", async function () {
+      const combo = pokemonName + "_" + nca.mode; // e.g. "charizard_xgrow"
+      if (unsupportedCombos.includes(combo)) {
+        warningDiv.style.display = "block";
+        return; // do not change model
+      } else {
+        warningDiv.style.display = "none";
+        await nca.updateModel(pokemonName, nca.mode);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGB32F,
+          nca.SIZE,
+          nca.SIZE,
+          0,
+          gl.RGB,
+          gl.FLOAT,
+          nca.get_board()
+        );
+      }
+      // Update CSS classes
+      for (let other of pokemon) {
+        document.getElementById(other).classList.remove("subject-selected");
+      }
+      this.classList.add("subject-selected");
+      // toggle warning
+    });
 }
 
 /*========================  GAME LOOP  ========================*/

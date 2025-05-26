@@ -77,32 +77,35 @@
             </div>
           </div>
         </div>
-
+        <div class="warning">
+          <b>This configuration is not available</b>
+        </div>
         <div class="simulation-settings">
           <div class="a-setting">
             <div class="a-setting-title">
               <h4>Objective:</h4>
               <select class="model-selector" id="modelSelector">
-                <option value="Grow">Grow</option>
-                <option value="Persist">Persist</option>
-                <option value="Regenerate">Regenerate</option>
+                <option value="grow">Grow</option>
+                <option value="persist">Persist</option>
+                <option value="regenerate">Regenerate</option>
               </select>
             </div>
 
             <p class="info">
               <b>Grow:</b> Cellular automata is trained to achieve a
-              reconstruction target within a number of iterations—but it doesn't
-              know what to do after...
+              reconstruction target by rolling out some iterations from a
+              seed—but it doesn't know what to do after those iterations...
             </p>
             <p class="info">
               <b>Persist:</b> Cellular automata is trained to reconstruct the
               target from various starting states—including fully-reconstructed
-              ones.
+              ones, allowing the target state to become an 'attracting' state
             </p>
             <p class="info">
               <b>Regenerate:</b> Similar to the 'persist' objective, however the
               samples from the pool are exposed to damage, allowing the model to
-              learn to "regrow" damaged cells.
+              learn to "regrow" damaged cells, making the target state an even
+              stronger 'attracting' state
             </p>
           </div>
           <div class="a-setting">

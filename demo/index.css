@@ -133,3 +133,12 @@ canvas {
   gap: 5px;
   font-size: small;
 }
+
+.warning {
+  color: #ff0000; /* Set warning text color to red */
+  font-weight: bold;
+  font-size: medium;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: rgba(255, 0, 0, 0.1); /* Light red background */
+}
