@@ -4,7 +4,7 @@ from utils import CAGetBoard, to_onnx, init_board
 
 if __name__ == "__main__":
     # load and convert model
-    names = ["darkrai"]
+    names = ["arceus"]
     tasks = ["regenerate"]
     for task in tasks:
         for name in names:
@@ -16,11 +16,11 @@ if __name__ == "__main__":
             torch_model = CAGetBoard(state_size=32)
             torch_model.load_state_dict(
                 torch.load(
-                    f"demo/models/{model_name}.pt", map_location=torch.device("cpu")
+                    f"docs/models/{model_name}.pt", map_location=torch.device("cpu")
                 )
             )
             to_onnx(torch_model, model_name, (1, C, max(H, W), max(H, W)))
 
             # validate onxx
-            onnx_model = onnx.load(f"demo/models/{model_name}.onnx")
+            onnx_model = onnx.load(f"docs/models/{model_name}.onnx")
             onnx.checker.check_model(onnx_model)

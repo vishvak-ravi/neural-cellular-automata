@@ -177,4 +177,4 @@ def to_onnx(torch_model: CAGetBoard, save_name: str, img_shape: tuple):
 
     # quantize + prune and retrain later
     onxx_program = torch.onnx.export(torch_model, example_input, dynamo=True)
-    onxx_program.save(f"demo/models/{save_name}.onnx")
+    onxx_program.save(f"docs/models/{save_name}.onnx")
