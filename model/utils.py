@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.optim.adamw import AdamW
 
+DEF_PERCEPTION_KERNEL_SIZE = 3
 DEF_STATE_SIZE = 16
 PAD_AMT = 12
 EPS = 0.5
@@ -31,24 +32,38 @@ def init_board(img_path: str, state_size: int = DEF_STATE_SIZE) -> torch.Tensor:
 
     return features, target
 
+def get_perception_kernel(state_grid: torch.Tensor, kernel_size: int = 3):
+    assert kernel_size in [3, 5] # TODO make generalizable
+    
+    if kernel_size == 3:
+        sobel_x = torch.tensor(
+            [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
+            dtype=state_grid.dtype,
+            device=state_grid.device,
+        ).to(device)
+    elif kernel_size == 5:
+        sobel_x = torch.tensor(
+            [[-1, -2, 0, 2, 1], [-2, -4, 0, 4, 2], [-3, -6, 0, 6, 3], [-2, -4, 0, 4, 2], [-1, -2, 0, 2, 1]],
+            dtype=state_grid.dtype,
+            device=state_grid.device,
+        ).to(device)
+    sobel_y = sobel_x.t().to(state_grid.device)
+    return sobel_x, sobel_y
 
-def get_perception(state_grid: torch.Tensor) -> torch.Tensor:
+
+def get_perception(state_grid: torch.Tensor, perception_kernel: tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
     """
     Applies Sobel filters to each channel of the input state_grid across a batch.
     """
 
     # Sobel kernels
-    sobel_x = torch.tensor(
-        [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
-        dtype=state_grid.dtype,
-        device=state_grid.device,
-    ).to(device)
-    sobel_y = sobel_x.t().to(device)
+    sobel_x, sobel_y = perception_kernel
+    kernel_size = sobel_x.shape[-1]
 
     # Prepare kernels for depthwise conv2d
     B, C, H, W = state_grid.shape
-    sobel_x = sobel_x.view(1, 1, 3, 3).repeat(C, 1, 1, 1)
-    sobel_y = sobel_y.view(1, 1, 3, 3).repeat(C, 1, 1, 1)
+    sobel_x = sobel_x.view(1, 1, kernel_size, kernel_size).repeat(C, 1, 1, 1)
+    sobel_y = sobel_y.view(1, 1, kernel_size, kernel_size).repeat(C, 1, 1, 1)
 
     # Add batch dimension and apply depthwise convolution
     state_grid = state_grid.to(device)
@@ -93,9 +108,10 @@ class CAUpdate(torch.nn.Module):
 
 
 class CAGetBoard(torch.nn.Module):
-    def __init__(self, state_size=DEF_STATE_SIZE, learned_features=False):
+    def __init__(self, state_size=DEF_STATE_SIZE, perception_kernel_size=DEF_PERCEPTION_KERNEL_SIZE, learned_features=False):
         super().__init__()
         self.model = CAUpdate(state_size=state_size, learned_features=learned_features)
+        self.perception_kernel = get_perception_kernel(state_size, perception_kernel_size) # tuple of filters
 
     def forward(self, x):
         """
@@ -104,7 +120,7 @@ class CAGetBoard(torch.nn.Module):
         n = RGBA + hidden states
         """
         boards = x
-        perception = get_perception(boards)
+        perception = get_perception(boards, self.perception_kernel)
         dboard = self.model(perception)
 
         B, C, H, W = dboard.shape
